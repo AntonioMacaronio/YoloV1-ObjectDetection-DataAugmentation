@@ -7,7 +7,7 @@ architecture_config = [
     (3, 192, 1, 1),
     "M",
     (1, 128, 1, 0),
-    (3, 192, 1, 1),
+    (3, 256, 1, 1),
     (1, 256, 1, 0),
     (3, 512, 1, 1), 
     "M",
@@ -17,7 +17,7 @@ architecture_config = [
     "M",
     [(1, 512, 1, 0), (3, 1024, 1, 1), 2],   # List: first_layer, second_layer, repetitions_of_before_layers
     (3, 1024, 1, 1),    #4 Finishing convolutional layers
-    (3, 1024, 1, 1),
+    (3, 1024, 2, 1),
     (3, 1024, 1, 1),
     (3, 1024, 1, 1),
 ]
@@ -68,7 +68,7 @@ class Yolo1(nn.Module):
                     in_channels = conv2[1]
         return nn.Sequential(*layers)
 
-    def _create_fcs(self, S, num_boxes, num_classes):
+    def _create_fcs(self, split_size, num_boxes, num_classes):
         S, B, C = split_size, num_boxes, num_classes
         return nn.Sequential(
             nn.Flatten(), 
@@ -76,7 +76,7 @@ class Yolo1(nn.Module):
             nn.Dropout(0.0), 
             nn.LeakyReLU(0.1), 
             nn.Linear(496, S*S * (C + B*5))
-            )
+        )
             
 def test(S = 7, B = 2, C = 20):
     model = Yolo1(split_size = S, num_boxes = B, num_classes = C)
