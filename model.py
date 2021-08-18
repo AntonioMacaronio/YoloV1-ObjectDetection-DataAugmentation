@@ -23,7 +23,7 @@ architecture_config = [
 ]
 
 class CNNBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, "kwargs"):
+    def __init__(self, in_channels, out_channels, **kwargs):
         super(CNNBlock, self).__init__()
         self.conv = nn.Conv2d(in_channels, out_channels, bias=False, **kwargs)
         self.batchnorm = nn.BatchNorm2d(out_channels)
@@ -51,7 +51,8 @@ class Yolo1(nn.Module):
         for x in architecture:
             if type(x) == tuple:
                 layers += [
-                    CNNBlock(in_channels, out_channels = x[1], kernel_size = x[0], stride = s[2], padding = x[3])]
+                    CNNBlock(in_channels, out_channels = x[1], kernel_size = x[0], stride = x[2], padding = x[3])]
+                in_channels = x[1]
             elif type(x) == str:
                 layers += [nn.MaxPool2d(kernel_size = 2, stride = 2)]
             elif type(x) == list:
