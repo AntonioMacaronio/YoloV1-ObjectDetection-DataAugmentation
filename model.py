@@ -1,29 +1,30 @@
 import torch
 import torch.nn as nn
 
-architecture_config = [
+model_architecture = [
     (7, 64, 2, 3),      # Tuple: (kernel_size, num_filters, stride, padding)
     "M",                # Maxpool layer
-    (3, 192, 1, 1),
+    (3, 192, 1, 1), 
     "M",
     (1, 128, 1, 0),
     (3, 256, 1, 1),
     (1, 256, 1, 0),
     (3, 512, 1, 1), 
     "M",
-    [(1, 256, 1, 0), (3, 512, 1, 1), 4],    # List: first_layer, second_layer, repetitions_of_before_layers
+    [(1, 256, 1, 0), (3, 512, 1, 1), 4],    # List: first_layer, second_layer, num_repetitions_of_prev2_layers
     (1, 512, 1, 0),
     (3, 1024, 1, 1),
     "M",
-    [(1, 512, 1, 0), (3, 1024, 1, 1), 2],   # List: first_layer, second_layer, repetitions_of_before_layers
-    (3, 1024, 1, 1),    #4 Finishing convolutional layers
+    [(1, 512, 1, 0), (3, 1024, 1, 1), 2],   # List: first_layer, second_layer, num_repetitions_of_prev2_layers
+    (3, 1024, 1, 1),    # 4 Finishing convolutional layers
     (3, 1024, 2, 1),
     (3, 1024, 1, 1),
     (3, 1024, 1, 1),
-]
+] 
 
+# this block consists of 3 layers: convolution
 class CNNBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, **kwargs):
+    def __init__(self, in_channels, out_channels, **kwargs): # kwargs is variable number of arguments (this will be kernel_size, stride, padding)
         super(CNNBlock, self).__init__()
         self.conv = nn.Conv2d(in_channels, out_channels, bias=False, **kwargs)
         self.batchnorm = nn.BatchNorm2d(out_channels)
@@ -35,7 +36,7 @@ class CNNBlock(nn.Module):
 class Yolo1(nn.Module):
     def __init__(self, in_channels=3, **kwargs):
         super(Yolo1, self).__init__()
-        self.architecture = architecture_config
+        self.architecture = model_architecture
         self.in_channels = in_channels
         self.darknet = self._create_conv_layers(self.architecture)
         self.fcs = self._create_fcs(**kwargs)
