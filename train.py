@@ -4,10 +4,10 @@ import torch.optim as optim
 import torchvision.transforms.functional as FT
 from tqdm import tqdm
 from torch.utils.data import DataLoader
-from model import Yolo1
+from model import YoloV1
 from dataset import VOCDataset
 from loss import YoloLoss
-from utils import(
+from utils import (
     intersection_over_union,
     non_max_suppression,
     mean_average_precision,
@@ -18,14 +18,14 @@ from utils import(
     load_checkpoint
 )
 
-seed = 123 #pseudorandom seed, gets the same dataset loading
+seed = 3301 #pseudorandom seed, gets the same dataset loading
 torch.manual_seed(seed)
 
-#Hyperparameters for our model
+# Hyperparameters for our model
 LEARNING_RATE = 2e-5
 DEVICE = "cude" if torch.cuda.is_available() else "cpu"
 BATCH_SIZE = 16
-WEIGHT_DECAY = 0    #no regularization in order for fast training
+WEIGHT_DECAY = 0    # no regularization in order for fast training
 EPOCHS = 100
 NUM_WORKERS = 2
 PIN_MEMORY = True
@@ -62,7 +62,7 @@ def train_fn(train_loader, model, optimizer, loss_fn):
     print(f"Mean loss was {sum(mean_loss)/len(mean_loss)}")
 
 def main():
-    model = Yolo1(split_size = 7, num_boxes = 2, num_classes = 20).to(DEVICE)
+    model = YoloV1(split_size = 7, num_boxes = 2, num_classes = 20).to(DEVICE)
     optimizer = optim.Adam(model.parameters(), lr = LEARNING_RATE, weight_decay = WEIGHT_DECAY)
     loss_fn = YoloLoss()
 

@@ -21,20 +21,27 @@ class YoloLoss(nn.Module):
         self.B = B
         self.C = C
         self.lambda_noObj = 0.5
-        self.lambda_coord - 5
+        self.lambda_coord = 5
     
     def forward(self, predictions, target):
-        predictions = predictions.reshape(-1, self.S, self.S, self.C + self.B*5)
+        """Given an 
+        Input:
+            1. predictions = our predictions from our model
+            2. target = actual labels, has shape (batchSize, S, S, 25)
+        Output:
+            1. loss
+        """
+        predictions = predictions.reshape(-1, self.S, self.S, self.C + self.B*5) # predictions has shape (batchSize, 7, 7, 30)
         
-        iou_b1 = intersection_over_union(predictions[.., 21:25], target[..., 21:25])
-        iou_b2 = intersection_over_union(predictions[.., 26:30], target[..., 21:25])
+        iou_b1 = intersection_over_union(predictions[..., 21:25], target[..., 21:25]) # note: ... means repeated colons
+        iou_b2 = intersection_over_union(predictions[..., 26:30], target[..., 21:25])
         iouS = torch.cat([iou_b1.unsqueeze(0), iou_b2.unsqueeze(0)], dim = 0)
-        iou_maxes, best_box = torch.max(iouS, dim = 0)
-        exists_box = target[..., 20].unsqueeze(3)   #Is there an obj in i
+        iou_maxes, best_box = torch.max(iouS, dim = 0) # note: best_box refers to the box that's reponsible (highest IOU)
+        exists_box = target[..., 20].unsqueeze(3) # exists_box refers to the indicator function 1^obj_i (1 if there is an object in cell i)
 
-        # ===============
-        # BOX COORDINATES
-        # ===============
+        # =============== #
+        # BOX COORDINATES #
+        # =============== #
         box_predictions = exists_box * (
             (best_box * predictions[..., 26:30] + (1 - best_box) * predictions[..., 21:25])
         )
@@ -49,9 +56,9 @@ class YoloLoss(nn.Module):
             torch.flatten(box_targets, end_dim = -2)
         )
 
-        # ===========
-        # OBJECT LOSS
-        # ===========
+        # =========== #
+        # OBJECT LOSS #
+        # =========== #
         pred_box = (
             best_box * predictions[..., 25:26] + (1 - best_box) * predictions[..., 20:21])
         # (N*S*S)
@@ -59,21 +66,21 @@ class YoloLoss(nn.Module):
             torch.flatten(exists_box * pred_box),
             torch.flatten(exists_box * target[..., 20:21])
         )
-        # ==============
-        # NO OBJECT LOSS
-        # ==============
+        # ============== #
+        # NO OBJECT LOSS #
+        # ============== #
         # (N, S, S, 1) ----> (N, S*S)
         no_object_loss = self.mse(
-            torch.flatten((1 - exists_box) * predictions[..., 20:21], start_dim = 1)
+            torch.flatten((1 - exists_box) * predictions[..., 20:21], start_dim = 1),
             torch.flatten((1 - exists_box) * target[..., 20:21], start_dim = 1)
         )
         no_object_loss += self.mse(
-            torch.flatten((1 - exists_box) * predictions[..., 25:26], start_dim = 1)
+            torch.flatten((1 - exists_box) * predictions[..., 25:26], start_dim = 1),
             torch.flatten((1 - exists_box) * target[..., 20:21], start_dim = 1)
         )
-        # ===================
-        # CLASSIFICATION LOSS
-        # ===================
+        # =================== #
+        # CLASSIFICATION LOSS #
+        # =================== #
         # (N, S, S, 20) ----> (N*S*S, 20)
         class_loss = self.mse(
             torch.flatten(exists_box * predictions[..., :20], end_dim = 2),
@@ -81,7 +88,7 @@ class YoloLoss(nn.Module):
         )
 
         loss = (
-            self.lambda_coord * boss_loss 
+            self.lambda_coord * box_loss 
             + object_loss 
             + self.lambda_noObj * no_object_loss
             + class_loss

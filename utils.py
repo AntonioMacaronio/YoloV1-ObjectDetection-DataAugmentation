@@ -13,13 +13,12 @@ import matplotlib.patches as patches
 from collections import Counter
 
 def intersection_over_union(boxes_preds, boxes_labels, box_format="midpoint"):
-    """
-    Calculates intersection over union
-    Parameters:
+    """Calculates intersection over union
+    Input:
         boxes_preds (tensor): Predictions of Bounding Boxes (BATCH_SIZE, 4)
         boxes_labels (tensor): Correct labels of Bounding Boxes (BATCH_SIZE, 4)
         box_format (str): midpoint/corners, if boxes (x,y,w,h) or (x1,y1,x2,y2)
-    Returns:
+    Output:
         tensor: Intersection over union for all examples
     """
 
@@ -58,8 +57,7 @@ def intersection_over_union(boxes_preds, boxes_labels, box_format="midpoint"):
 
 
 def non_max_suppression(bboxes, iou_threshold, threshold, box_format="corners"):
-    """
-    Does Non Max Suppression given bboxes
+    """Does Non Max Suppression given bboxes
     Parameters:
         bboxes (list): list of lists containing all bboxes with each bboxes
         specified as [class_pred, prob_score, x1, y1, x2, y2]
@@ -96,20 +94,16 @@ def non_max_suppression(bboxes, iou_threshold, threshold, box_format="corners"):
     return bboxes_after_nms
 
 
-def mean_average_precision(
-    pred_boxes, true_boxes, iou_threshold=0.5, box_format="midpoint", num_classes=20
-):
-    """
-    Calculates mean average precision 
-    Parameters:
-        pred_boxes (list): list of lists containing all bboxes with each bboxes
-        specified as [train_idx, class_prediction, prob_score, x1, y1, x2, y2]
-        true_boxes (list): Similar as pred_boxes except all the correct ones 
-        iou_threshold (float): threshold where predicted bboxes is correct
-        box_format (str): "midpoint" or "corners" used to specify bboxes
-        num_classes (int): number of classes
-    Returns:
-        float: mAP value across all classes given a specific IoU threshold 
+def mean_average_precision(pred_boxes, true_boxes, iou_threshold=0.5, box_format="midpoint", num_classes=20):
+    """Calculates mean average precision 
+    Input:
+        1. pred_boxes (list): list of lists containing all bboxes with each bboxes specified as [train_idx, class_prediction, prob_score, x1, y1, x2, y2]
+        2. true_boxes (list): Similar as pred_boxes except all the correct ones 
+        3. iou_threshold (float): threshold where predicted bboxes is correct
+        4. box_format (str): "midpoint" or "corners" used to specify bboxes
+        5. num_classes (int): number of classes
+    Output:
+        1. float: mAP value across all classes given a specific IoU threshold 
     """
 
     # list storing all AP for respective classes
@@ -234,22 +228,22 @@ def plot_image(image, boxes):
 
     plt.show()
 
-def get_bboxes(
-    loader,
-    model,
-    iou_threshold,
-    threshold,
-    pred_format="cells",
-    box_format="midpoint",
-    device="cuda",
-):
+def get_bboxes(loader, model, iou_threshold, threshold, pred_format="cells", box_format="midpoint", device="cuda"):
     all_pred_boxes = []
     all_true_boxes = []
 
     # make sure model is in eval before get bboxes
     model.eval()
     train_idx = 0
+    for i, v in enumerate(loader):
+        print(type(i))
+        print(type(v))
+        print()
+        print(i)
+        print(v)
+        break
 
+    return
     for batch_idx, (x, labels) in enumerate(loader):
         x = x.to(device)
         labels = labels.to(device)
