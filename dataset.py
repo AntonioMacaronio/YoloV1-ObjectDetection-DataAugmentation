@@ -10,16 +10,17 @@ The Pytorch framework will handle how to batch this and dataloading for us.
 """
 
 import torch
+from torchvision.transforms.functional import pil_to_tensor
 import os
 import pandas as pd
 from PIL import Image
 
 class VOCDataset(torch.utils.data.Dataset):
-    def __init__(self, csv_file, img_dir, label_dir, S=7, B=2, C=20, transform = None):
+    def __init__(self, csv_file, img_dir, label_dir, S=7, B=2, C=20, transform=None):
         self.annotations = pd.read_csv(csv_file) # Note: this a pandas dataframe with each row representing a datapoint. each row has 2 cols: jpg_fname, labeltxt_fname
         self.img_dir = img_dir
         self.label_dir = label_dir
-        self.transform = transform
+        self.transform = transform # there will be a transform passed in, which resizes an image
         self.S = S
         self.B = B
         self.C = C
@@ -30,8 +31,9 @@ class VOCDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, index):
         """Gets a image and a label from the dataset
-        Notes:
-            1. label_matrix = tensor of shape (S, S, 30) where first 2 dimensions specify the cell, and last dim specifies the cell bbox
+        Outputs:
+            1. image = tensor of shape
+            2. label_matrix = tensor of shape (S, S, 30) where first 2 dimensions specify the cell, and last dim specifies the cell bbox
         """
         label_path = os.path.join(self.label_dir, self.annotations.iloc[index, 1])
         boxes = [] # there could be multiple bboxes
@@ -49,8 +51,9 @@ class VOCDataset(torch.utils.data.Dataset):
         image = Image.open(img_path)
         boxes = torch.tensor(boxes)
 
-        if self.transform:
-            image, boxes = self.transform(image, boxes)
+        if self.transform: 
+            # image, boxes = self.transform(image, boxes)
+            image = self.transform(image) # they now have shape (3, 448, 448)
         # TODO: fix this label_matrix so that it is (S, S, 25)
         label_matrix = torch.zeros((self.S, self.S, self.C + 5*self.B)) # shape (S, S, 30) tensor that contains the labels for each cell, but last 5 are not used
         for box in boxes:

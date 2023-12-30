@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 model_architecture = [
-    (7, 64, 2, 3),      # Tuple: (kernel_size, num_filters, stride, padding)
+    (7, 64, 2, 3),      # Tuple for Conv Layer: (kernel_size, num_filters, stride, padding)
     "M",                # Maxpool layer
     (3, 192, 1, 1), 
     "M",
@@ -22,7 +22,7 @@ model_architecture = [
     (3, 1024, 1, 1),
 ] 
 
-# this block consists of 3 layers: convolution
+# this block consists of 3 layers: convolution, batchnorm, and relu
 class CNNBlock(nn.Module):
     def __init__(self, in_channels, out_channels, **kwargs): # kwargs is variable number of arguments (this will be kernel_size, stride, padding)
         super(CNNBlock, self).__init__()
@@ -57,9 +57,9 @@ class YoloV1(nn.Module):
             - for each bbox, it has 5 dim: (probability, x (numpyCol), y (numpyRow), length_in_x, length_in_y)
 
         """
-        x = self.darknet(x) # after this, x has shape torch.Size([batchSize, 1024, 7, 7])
-        x = torch.flatten(x, start_dim=1) # x has shape torch.Size([batchSize, 50176]), and we flatten right before the fully-connected layers
-        return self.fcs(torch.flatten(x, start_dim = 1)) 
+        x2 = self.darknet(x) # x2 has shape torch.Size([batchSize, 1024, 7, 7])
+        x3 = torch.flatten(x2, start_dim=1) # x3 has shape torch.Size([batchSize, 50176]), and we flatten right before the fully-connected layers
+        return self.fcs(x3)
     
     def create_conv_layers(self, architecture):
         layers = []
@@ -70,8 +70,10 @@ class YoloV1(nn.Module):
                 layers += [
                     CNNBlock(in_channels, out_channels = x[1], kernel_size = x[0], stride = x[2], padding = x[3])]
                 in_channels = x[1]
+            
             elif type(x) == str:
                 layers += [nn.MaxPool2d(kernel_size = 2, stride = 2)]
+            
             elif type(x) == list:
                 conv1 = x[0] # first convolutional layer tuple: (kernel_size, num_filters, stride, padding)
                 conv2 = x[1] # second convolutional layer tuple
@@ -79,11 +81,11 @@ class YoloV1(nn.Module):
 
                 for x in range(num_repeats):
                     layers += [
-                        CNNBlock(in_channels, conv1[1], kernel_size = conv1[0], stride = conv1[2], padding = conv1[3])]
+                        CNNBlock(in_channels, conv1[1], kernel_size=conv1[0], stride=conv1[2], padding=conv1[3])]
                     layers += [
-                        CNNBlock(conv1[1], conv2[1], kernel_size = conv2[0], stride = conv2[2], padding = conv2[3])]
+                        CNNBlock(conv1[1], conv2[1], kernel_size=conv2[0], stride=conv2[2], padding=conv2[3])]
                     in_channels = conv2[1]
-
+        print(layers)
         return nn.Sequential(*layers) # here, *layers unpacks the list and sends them all into the Sequential as kwargs
 
     def create_fcs(self, split_size, num_boxes, num_classes):

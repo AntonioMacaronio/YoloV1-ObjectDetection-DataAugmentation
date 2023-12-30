@@ -235,15 +235,8 @@ def get_bboxes(loader, model, iou_threshold, threshold, pred_format="cells", box
     # make sure model is in eval before get bboxes
     model.eval()
     train_idx = 0
-    for i, v in enumerate(loader):
-        print(type(i))
-        print(type(v))
-        print()
-        print(i)
-        print(v)
-        break
 
-    return
+    # for x, y in fox_dataloader:
     for batch_idx, (x, labels) in enumerate(loader):
         x = x.to(device)
         labels = labels.to(device)
