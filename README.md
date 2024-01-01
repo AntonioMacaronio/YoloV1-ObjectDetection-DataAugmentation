@@ -1,5 +1,5 @@
 # Object Detection with YoloV1 
-This repository contains an implementation of YOLO (You Only Look Once) Object Detection which uses a deep convolutional neural network.
+This repository contains an implementation of YOLO (You Only Look Once) Object Detection which uses a deep convolutional neural network. Object detection is the problem involving when given an image, we would like to identify all the objects in the image and draw a bounding box around them.
 
 The dataset used for training is Pascal VOC, located here: http://host.robots.ox.ac.uk/pascal/VOC/
 
