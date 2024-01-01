@@ -203,7 +203,7 @@ def mean_average_precision(pred_boxes, true_boxes, iou_threshold=0.5, box_format
     return sum(average_precisions) / len(average_precisions)
 
 
-def plot_image(image, boxes):
+def plot_image(image, boxes, classEnum_to_color=None, classEnum_to_className=None):
     """Plots predicted bounding boxes on the image
     Input:
         1. imaage = tensor with shape torch.Size([numRows, numCols, 3])
@@ -222,8 +222,16 @@ def plot_image(image, boxes):
 
     
 
-    # Create a Rectangle potch
+    # Create a Rectangle patch for each box
     for box in boxes:
+        if classEnum_to_color != None:
+            class_pred = classEnum_to_className[int(box[1])] # this is a string, like "motorbike" or "person"
+            class_color = classEnum_to_color[int(box[1])]
+        else:
+            class_pred = f"label class {box[1]}"
+            class_color = "r"
+
+        prob_score = box[2]
         box = box[3:] # remove train_idx, class_prediction, prob_score
         # box[0] is x midpoint, box[2] is width (numpyCol)
         # box[1] is y midpoint, box[3] is height (numpyRow)
@@ -235,12 +243,24 @@ def plot_image(image, boxes):
             (upper_left_x * width, upper_left_y * height),
             box[2] * width,
             box[3] * height,
-            linewidth=1,
-            edgecolor="r",
+            linewidth=1.5,
+            edgecolor=class_color,
             facecolor="none",
         )
         # Add the patch to the Axes
         ax.add_patch(rect)
+    
+        # Add annotation text
+        annotation_text = f'{class_pred}: {prob_score:.2f}'
+        ax.text(
+            upper_left_x * width,
+            upper_left_y * height,
+            annotation_text,
+            color=class_color,
+            fontsize=8,
+            verticalalignment='bottom',
+            bbox=dict(facecolor='gray', alpha=0.7, edgecolor='none', boxstyle='round,pad=0.2'),
+        )
 
     plt.show()
 
