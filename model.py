@@ -52,9 +52,9 @@ class YoloV1(nn.Module):
         Input:
             - 1. x = torch.size([batchSize, 3, 448, 448]) tensor which represents an image with RGB channel
         Output:
-            - 1. pred = torch.size([30, ]) tensor, 20 classes + 5 dims for bbox 1 + 5 dim for bbox 2
+            - 1. pred = torch.size([batchSize, 30 * S * S]) tensor, 20 classes + 5 dims for bbox 1 + 5 dim for bbox 2
         Notes:
-            - for each bbox, it has 5 dim: (probability, x (numpyCol), y (numpyRow), length_in_x, length_in_y)
+            - for each bbox, it has 5 dim: (probability, x_center (numpyCol), y_center (numpyRow), length_in_x (numCols), length_in_y (numRows))
 
         """
         x2 = self.darknet(x) # x2 has shape torch.Size([batchSize, 1024, 7, 7])
@@ -85,7 +85,6 @@ class YoloV1(nn.Module):
                     layers += [
                         CNNBlock(conv1[1], conv2[1], kernel_size=conv2[0], stride=conv2[2], padding=conv2[3])]
                     in_channels = conv2[1]
-        print(layers)
         return nn.Sequential(*layers) # here, *layers unpacks the list and sends them all into the Sequential as kwargs
 
     def create_fcs(self, split_size, num_boxes, num_classes):

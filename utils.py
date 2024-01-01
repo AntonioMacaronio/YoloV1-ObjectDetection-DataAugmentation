@@ -56,37 +56,44 @@ def intersection_over_union(boxes_preds, boxes_labels, box_format="midpoint"):
     return intersection / (box1_area + box2_area - intersection + 1e-6)
 
 
-def non_max_suppression(bboxes, iou_threshold, threshold, box_format="corners"):
-    """Does Non Max Suppression given bboxes
-    Parameters:
-        bboxes (list): list of lists containing all bboxes with each bboxes
-        specified as [class_pred, prob_score, x1, y1, x2, y2]
-        iou_threshold (float): threshold where predicted bboxes is correct
-        threshold (float): threshold to remove predicted bboxes (independent of IoU) 
-        box_format (str): "midpoint" or "corners" used to specify bboxes
-    Returns:
-        list: bboxes after performing NMS given a specific IoU threshold
+def non_max_suppression(bboxes, iou_threshold, prob_threshold, box_format="midpoint"):
+    """Does Non Max Suppression given bboxes for a specific class (purpose is to reduce # of bboxes in a cell)
+
+    Notes:
+        - General Algorithm:
+            1. Discard all bboxes < probability threshold
+            2. For the largest probability bbox, and remove those that have IOU > iou_threshold
+        - This method is called for every cell (doesn't mix bboxes from separate cells)
+
+    Input:
+        1. bboxes (list): list of lists containing all bboxes with each bboxes specified as [class_pred, prob_score, x1, y1, x2, y2]
+        2. iou_threshold (float): threshold where predicted bboxes is correct
+        3. threshold (float): threshold to remove predicted bboxes (independent of IoU) 
+        4. box_format (str): "midpoint" or "corners" used to specify bboxes
+    Output:
+        1. bboxes_after_nms (list): bboxes after performing NMS given a specific IoU threshold
     """
 
     assert type(bboxes) == list
-
-    bboxes = [box for box in bboxes if box[1] > threshold]
-    bboxes = sorted(bboxes, key=lambda x: x[1], reverse=True)
+    # print(len(bboxes))
+    bboxes = [box for box in bboxes if box[1] > prob_threshold] # removes all bboxes with low probability of an object
+    # print(len(bboxes))
+    bboxes = sorted(bboxes, key=lambda x: x[1], reverse=True) # sort the boxes by highest probability score at the beginning
     bboxes_after_nms = []
 
-    while bboxes:
+    while len(bboxes) > 0:
         chosen_box = bboxes.pop(0)
-
+        
+        # keeps all the boxes that are not of the same class or have low IOU
         bboxes = [
             box
             for box in bboxes
-            if box[0] != chosen_box[0]
+            if box[0] != chosen_box[0] # if it's not of the same class
             or intersection_over_union(
                 torch.tensor(chosen_box[2:]),
                 torch.tensor(box[2:]),
                 box_format=box_format,
-            )
-            < iou_threshold
+            ) < iou_threshold # if it's not greater than the threshold, keep it.
         ]
 
         bboxes_after_nms.append(chosen_box)
@@ -106,7 +113,7 @@ def mean_average_precision(pred_boxes, true_boxes, iou_threshold=0.5, box_format
         1. float: mAP value across all classes given a specific IoU threshold 
     """
 
-    # list storing all AP for respective classes
+    # list storing all average precisions for respective classes
     average_precisions = []
 
     # used for numerical stability later on
@@ -197,8 +204,15 @@ def mean_average_precision(pred_boxes, true_boxes, iou_threshold=0.5, box_format
 
 
 def plot_image(image, boxes):
-    """Plots predicted bounding boxes on the image"""
-    im = np.array(image)
+    """Plots predicted bounding boxes on the image
+    Input:
+        1. imaage = tensor with shape torch.Size([numRows, numCols, 3])
+        2. boxes (list of lists) = [[train_idx, class_prediction, prob_score, x1, y1, x2, y2],...], each list within the big list represents a bbox
+    """
+    if not isinstance(image, np.ndarray):
+        im = np.array(image)
+    else:
+        im = image
     height, width, _ = im.shape
 
     # Create figure and axes
@@ -206,14 +220,16 @@ def plot_image(image, boxes):
     # Display the image
     ax.imshow(im)
 
-    # box[0] is x midpoint, box[2] is width
-    # box[1] is y midpoint, box[3] is height
+    
 
     # Create a Rectangle potch
     for box in boxes:
-        box = box[2:]
+        box = box[3:] # remove train_idx, class_prediction, prob_score
+        # box[0] is x midpoint, box[2] is width (numpyCol)
+        # box[1] is y midpoint, box[3] is height (numpyRow)
+
         assert len(box) == 4, "Got more values than in x, y, w, h, in a box!"
-        upper_left_x = box[0] - box[2] / 2
+        upper_left_x = box[0] - box[2] / 2 
         upper_left_y = box[1] - box[3] / 2
         rect = patches.Rectangle(
             (upper_left_x * width, upper_left_y * height),
@@ -228,7 +244,13 @@ def plot_image(image, boxes):
 
     plt.show()
 
-def get_bboxes(loader, model, iou_threshold, threshold, pred_format="cells", box_format="midpoint", device="cuda"):
+def get_bboxes(loader, model, iou_threshold, prob_threshold, pred_format="cells", box_format="midpoint", device="cuda"):
+    """Given 
+    Input:
+
+    Output:
+    """
+    
     all_pred_boxes = []
     all_true_boxes = []
 
@@ -238,25 +260,25 @@ def get_bboxes(loader, model, iou_threshold, threshold, pred_format="cells", box
 
     # for x, y in fox_dataloader:
     for batch_idx, (x, labels) in enumerate(loader):
-        x = x.to(device)
-        labels = labels.to(device)
-
+        x = x.to(device) # has shape (batchSize, 3, 448, 448)
+        labels = labels.to(device) # has shape (batchSize, S, S, 30)
+        # print(f"on batch {batch_idx}")
         with torch.no_grad():
-            predictions = model(x)
+            predictions = model(x) # predictions has shape (batchSize, S * S * 30)
 
         batch_size = x.shape[0]
         true_bboxes = cellboxes_to_boxes(labels)
-        bboxes = cellboxes_to_boxes(predictions)
-
+        bboxes = cellboxes_to_boxes(predictions) # len(bboxes) = 8
+        # print(true_bboxes)
         for idx in range(batch_size):
+            # print(f"input into non_max_suppresion on datatpoint {idx}", bboxes[idx]) 
             nms_boxes = non_max_suppression(
-                bboxes[idx],
+                bboxes[idx], # len(bboxes[idx]) = 49 (S * S)
                 iou_threshold=iou_threshold,
-                threshold=threshold,
+                prob_threshold=prob_threshold,
                 box_format=box_format,
             )
-
-
+            # print("ARE WE GETTING ANYTHING HERE???", len(nms_boxes))
             #if batch_idx == 0 and idx == 0:
             #    plot_image(x[idx].permute(1,2,0).to("cpu"), nms_boxes)
             #    print(nms_boxes)
@@ -266,7 +288,7 @@ def get_bboxes(loader, model, iou_threshold, threshold, pred_format="cells", box
 
             for box in true_bboxes[idx]:
                 # many will get converted to 0 pred
-                if box[1] > threshold:
+                if box[1] > prob_threshold:
                     all_true_boxes.append([train_idx] + box)
 
             train_idx += 1
@@ -314,15 +336,26 @@ def convert_cellboxes(predictions, S=7):
 
 
 def cellboxes_to_boxes(out, S=7):
-    converted_pred = convert_cellboxes(out).reshape(out.shape[0], S * S, -1)
+    """
+    Input:
+        1. out = has shape (batchSize, S, S, 30) if it's a label or has shape (batchSize, S * S * 30) if it's a prediction
+    Output:
+        1. all_bboxes (list) = list with length=batchSize, each entry is a list of all bboxes for that datapoint, where a bbox is a length 5 list with (class, x_center, y_center, x_width, y_height)
+    """
+    converted_pred = convert_cellboxes(out).reshape(out.shape[0], S * S, -1) # converted_pred has shape (batchSize, S*S, 30)
     converted_pred[..., 0] = converted_pred[..., 0].long()
     all_bboxes = []
 
-    for ex_idx in range(out.shape[0]):
+    for ex_idx in range(out.shape[0]): # for each datapoint in the batch
         bboxes = []
 
         for bbox_idx in range(S * S):
+            # x.item() is a list of 5 numbers: (class, x_center, y_center, x_width, y_height)
             bboxes.append([x.item() for x in converted_pred[ex_idx, bbox_idx, :]])
+        
+        # if ex_idx == 0: # and len(out.shape) == 4:
+        #     print("for the first label in this batch, these are the bboxes:")
+        #     print(bboxes)
         all_bboxes.append(bboxes)
 
     return all_bboxes
