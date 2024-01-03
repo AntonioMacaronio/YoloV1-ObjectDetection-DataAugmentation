@@ -34,6 +34,8 @@ class VOCDataset(torch.utils.data.Dataset):
         Outputs:
             1. image = tensor of shape (3, 448, 448)
             2. label_matrix = tensor of shape (S, S, 30) where first 2 dimensions specify the cell, and last dim specifies the cell bbox
+        Notes:
+            'boxes' is converted into 'label_matrix', where boxes looks like [[class_label, x, y, width, height]]
         """
         label_path = os.path.join(self.label_dir, self.annotations.iloc[index, 1])
         boxes = [] # there could be multiple bboxes
@@ -74,5 +76,5 @@ class VOCDataset(torch.utils.data.Dataset):
                 label_matrix[i, j, 21:25] = box_coordinates
                 label_matrix[i, j, class_label] = 1
 
-        return image, label_matrix
+        return image, label_matrix  
         
