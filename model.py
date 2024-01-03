@@ -8,6 +8,7 @@ model_architecture = [
     "M",
     (1, 128, 1, 0),
     (3, 256, 1, 1),
+    "D2D",              # Dropout 2D layer
     (1, 256, 1, 0),
     (3, 512, 1, 1), 
     "M",
@@ -72,7 +73,10 @@ class YoloV1(nn.Module):
                 in_channels = x[1]
             
             elif type(x) == str:
-                layers += [nn.MaxPool2d(kernel_size = 2, stride = 2)]
+                if x == "M":
+                    layers += [nn.MaxPool2d(kernel_size = 2, stride = 2)]
+                if x == "D2D":
+                    layers += [nn.Dropout2d(0.5)]
             
             elif type(x) == list:
                 conv1 = x[0] # first convolutional layer tuple: (kernel_size, num_filters, stride, padding)
@@ -91,10 +95,10 @@ class YoloV1(nn.Module):
         S, B, C = split_size, num_boxes, num_classes
         return nn.Sequential(
             nn.Flatten(), 
-            nn.Linear(1024 * S * S, 496), 
-            nn.Dropout(0.0), 
+            nn.Linear(1024 * S * S, 4096), 
+            nn.Dropout(0.5), 
             nn.LeakyReLU(0.1), 
-            nn.Linear(496, S*S * (C + B*5)) # this will be reshaped into (S, S, 30) later
+            nn.Linear(4096, S*S * (C + B*5)) # this will be reshaped into (S, S, 30) later
         )
 
 def test(S = 7, B = 2, C = 20): 
@@ -108,4 +112,4 @@ def test(S = 7, B = 2, C = 20):
     x = torch.randn((2, 3, 448, 448))
     print(model(x).shape)
 
-# test()
+test()
