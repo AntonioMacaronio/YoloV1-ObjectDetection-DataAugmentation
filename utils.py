@@ -8,6 +8,7 @@
 
 import torch
 import numpy as np
+import cv2
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from collections import Counter
@@ -58,13 +59,6 @@ def intersection_over_union(boxes_preds, boxes_labels, box_format="midpoint"):
 
 def non_max_suppression(bboxes, iou_threshold, prob_threshold, box_format="midpoint"):
     """Does Non Max Suppression given bboxes for a specific class (purpose is to reduce # of bboxes in a cell)
-
-    Notes:
-        - General Algorithm:
-            1. Discard all bboxes < probability threshold
-            2. For the largest probability bbox, and remove those that have IOU > iou_threshold
-        - This method is called for every cell (doesn't mix bboxes from separate cells)
-
     Input:
         1. bboxes (list): list of lists containing all bboxes with each bboxes specified as [class_pred, prob_score, x1, y1, x2, y2]
         2. iou_threshold (float): threshold where predicted bboxes is correct
@@ -72,6 +66,12 @@ def non_max_suppression(bboxes, iou_threshold, prob_threshold, box_format="midpo
         4. box_format (str): "midpoint" or "corners" used to specify bboxes
     Output:
         1. bboxes_after_nms (list): bboxes after performing NMS given a specific IoU threshold
+
+    Notes:
+        - General Algorithm:
+            1. Discard all bboxes < probability threshold
+            2. For the largest probability bbox, and remove those that have IOU > iou_threshold
+        - This method is called for every cell (doesn't mix bboxes from separate cells)
     """
 
     assert type(bboxes) == list
@@ -220,7 +220,10 @@ def plot_image(image, boxes, classEnum_to_color=None, classEnum_to_className=Non
     # Display the image
     ax.imshow(im)
 
-    
+    # A simple heuristic: lighter/brighter colors look better on dark backgrounds
+    dark_colors = ['red', 'blue', 'green', 'purple', 'brown', 'maroon', 'slategray', 'navy', 'indigo', 'olive', 'teal']
+    light_colors = ['orange', 'cyan', 'magenta', 'yellow', 'lime', 'pink', 'gold', 'orchid', 'turquoise']
+    colorToBackground = {color: 'white' if color in dark_colors else 'black' for color in classEnum_to_color.values()}
 
     # Create a Rectangle patch for each box
     for box in boxes:
@@ -259,16 +262,33 @@ def plot_image(image, boxes, classEnum_to_color=None, classEnum_to_className=Non
             color=class_color,
             fontsize=8,
             verticalalignment='bottom',
-            bbox=dict(facecolor='gray', alpha=0.7, edgecolor='none', boxstyle='round,pad=0.2'),
+            bbox=dict(facecolor=colorToBackground[class_color], alpha=0.7, edgecolor='none', boxstyle='round,pad=0.2'),
         )
 
     plt.show()
 
-def get_bboxes(loader, model, iou_threshold, prob_threshold, pred_format="cells", box_format="midpoint", device="cuda"):
-    """Given 
-    Input:
 
+def plot_bbox_and_label(csv_file):
+    """Plots the model's bounding box(es) on an image as well as the label's bounding box(es) on an image for a side by side comparison
+    Input:
+        1. cvs_file = this is either "train.csv" or "test.csv"
+        2. datapoint_index = which datapoint in the training or test set to plot
+        3. pred_boxes = 
+        4. target_boxes = 
+    """
+    fig, ax = plt.subplot((1, 2))
+    pass
+
+
+
+def get_bboxes(loader, model, iou_threshold, prob_threshold, pred_format="cells", box_format="midpoint", device="cuda"):
+    """Given an unshuffled dataloader of a dataset, this will generate all the bboxes
+    Input:
+        1. loader
+        2. model
     Output:
+        1. all_pred_boxes =  [[train_idx, class_prediction, prob_score, x_center, y_center, x_width, y_height], ...], each list within the big list represents a bbox
+        2. all_true_boxes =  [[train_idx, class_prediction, prob_score=1, x_center, y_center, x_width, y_height], ...], each list within the big list represents a bbox
     """
     
     all_pred_boxes = []
@@ -282,7 +302,7 @@ def get_bboxes(loader, model, iou_threshold, prob_threshold, pred_format="cells"
     for batch_idx, (x, labels) in enumerate(loader):
         x = x.to(device) # has shape (batchSize, 3, 448, 448)
         labels = labels.to(device) # has shape (batchSize, S, S, 30)
-        # print(f"on batch {batch_idx}")
+
         with torch.no_grad():
             predictions = model(x) # predictions has shape (batchSize, S * S * 30)
 
