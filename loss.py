@@ -20,7 +20,7 @@ class YoloLoss(nn.Module):
         self.S = S
         self.B = B
         self.C = C
-        self.lambda_noObj = 0.5
+        self.lambda_noObj = 0.5 
         self.lambda_coord = 5
     
     def forward(self, predictions, target):
@@ -41,7 +41,7 @@ class YoloLoss(nn.Module):
         iou_maxes, best_box = torch.max(iouS, dim = 0) # best_box has shape (batchSize, S, S, 1)
         
         # exists_box refers to the indicator function 1^obj_i (1 if there is an object in cell i)
-        exists_box = target[..., 20].unsqueeze(3) # has shape (batchSize, S, S, 1)
+        exists_box = target[..., 20].unsqueeze(3) # has shape (batchSize, S, S, 1), the .unsqueeze(3) added a 1 at the end
 
         # =============== #
         # BOX COORDINATES #

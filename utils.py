@@ -9,6 +9,7 @@
 import torch
 import numpy as np
 import cv2
+import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from collections import Counter
@@ -268,16 +269,83 @@ def plot_image(image, boxes, classEnum_to_color=None, classEnum_to_className=Non
     plt.show()
 
 
-def plot_bbox_and_label(csv_file):
-    """Plots the model's bounding box(es) on an image as well as the label's bounding box(es) on an image for a side by side comparison
+def plot_bbox_and_label(csv_file, datapoint_index, pred_boxes, target_boxes):
+    """Plots the model's predicted bounding box(es) on an image as well as the corresonponding label's bounding box(es) on an image for a side by side comparison, Can be used on both 
     Input:
         1. cvs_file = this is either "train.csv" or "test.csv"
         2. datapoint_index = which datapoint in the training or test set to plot
-        3. pred_boxes = 
-        4. target_boxes = 
+        3. pred_boxes (list of lists) = [[train_idx, class_prediction, prob_score, x1, y1, x2, y2],...], each list within the big list represents a bbox
+        4. target_boxes = ^ but 
     """
-    fig, ax = plt.subplot((1, 2))
-    pass
+    fig, ax = plt.subplots(1, 2, figsize=(15, 30)) # 1 row, 2 columns
+    fname_dataframe = pd.read_csv("data/" + csv_file) # dataframe with our filenames
+    image_fname = "data/images/" + fname_dataframe.iloc[datapoint_index, 0]
+
+    # plot the images
+    image_numpy = cv2.imread(image_fname)[...,::-1]
+    height, width, _ = image_numpy.shape
+    ax[0].imshow(image_numpy)
+    ax[1].imshow(image_numpy)
+
+
+    # setup variables to plot bboxes
+    classEnum_to_className = {
+        0: 'airplane', 1: 'bicycle', 2: 'bird', 3: 'boat', 4: 'bottle',
+        5: 'bus', 6: 'car', 7: 'cat', 8: 'chair', 9: 'cow', 
+        10: 'diningtable', 11: 'dog', 12: 'horse', 13: 'motorbike', 14: 'person',
+        15: 'pottedplant', 16: 'sheep', 17: 'sofa', 18: 'train', 19: 'TVmonitor',
+    }
+
+    classEnum_to_color = {
+        0: 'red', 1: 'blue', 2: 'green', 3: 'purple', 4: 'orange', 
+        5: 'cyan', 6: 'magenta', 7: 'yellow', 8: 'brown', 9: 'lime',
+        10: 'pink', 11: 'teal', 12: 'olive', 13: 'navy', 14: 'indigo',
+        15: 'maroon', 16: 'gold', 17: 'orchid', 18: 'turquoise', 19: 'slategray'
+    }
+    dark_colors = ['red', 'blue', 'green', 'purple', 'brown', 'maroon', 'slategray', 'navy', 'indigo', 'olive', 'teal']
+    light_colors = ['orange', 'cyan', 'magenta', 'yellow', 'lime', 'pink', 'gold', 'orchid', 'turquoise']
+    colorToBackground = {color: 'white' if color in dark_colors else 'black' for color in classEnum_to_color.values()}
+
+    # plot the model's predicted bboxes (on top of left image) and then plot the actual label's bboxes (on top of right image)
+    pred_boxes_filtered = [box for box in pred_boxes if box[0] == datapoint_index]
+    target_boxes_filtered = [box for box in target_boxes if box[0] == datapoint_index]
+
+    for col_index, boxes in enumerate([pred_boxes_filtered, target_boxes_filtered]):
+        for box in boxes:
+            class_pred = classEnum_to_className[int(box[1])] # this is a string, like "motorbike" or "person"
+            class_color = classEnum_to_color[int(box[1])]
+
+            prob_score = box[2]
+            box = box[3:] # remove train_idx, class_prediction, prob_score
+            # box[0] is x midpoint, box[2] is width (numpyCol)
+            # box[1] is y midpoint, box[3] is height (numpyRow)
+
+            assert len(box) == 4, "Got more values than in x, y, w, h, in a box!"
+            upper_left_x = box[0] - box[2] / 2 
+            upper_left_y = box[1] - box[3] / 2
+            rect = patches.Rectangle(
+                (upper_left_x * width, upper_left_y * height),
+                box[2] * width,
+                box[3] * height,
+                linewidth=1.5,
+                edgecolor=class_color,
+                facecolor="none",
+            )
+            # Add the patch to the Axes
+            ax[col_index].add_patch(rect)
+        
+            # Add annotation text
+            annotation_text = f'{class_pred}: {prob_score:.2f}'
+            ax[col_index].text(
+                upper_left_x * width,
+                upper_left_y * height,
+                annotation_text,
+                color=class_color,
+                fontsize=8,
+                verticalalignment='bottom',
+                bbox=dict(facecolor=colorToBackground[class_color], alpha=0.7, edgecolor='none', boxstyle='round,pad=0.2'),
+            )
+    plt.show()
 
 
 
